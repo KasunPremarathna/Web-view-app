@@ -37,12 +37,45 @@ class _MyHomePageState extends State<MyHomePage> {
   bool isLoading = true;
   int _selectedIndex = 0; // Track the selected nav bar item
 
-  // URLs for navigation items
-  final Map<int, String> navUrls = {
-    0: "https://mybikes.info/dashboard.php", // Home
-    1: "https://mybikes.info/profile.php", // Profile
-    2: "https://mybikes.info/shop.php", // Shop
-  };
+  // Navigation items with URLs and actions
+  final List<Map<String, dynamic>> navItems = [
+    {
+      'title': 'Home',
+      'icon': Icons.home,
+      'url': 'https://mybikes.info/login.php',
+    },
+    {
+      'title': 'Profile',
+      'icon': Icons.person,
+      'url': 'https://mybikes.info/profile.php',
+    },
+    {
+      'title': 'Shop',
+      'icon': Icons.shopping_cart,
+      'url': 'https://mybikes.info/shop.php',
+    },
+    {
+      'title': 'Community',
+      'icon': Icons.group,
+      'url': 'https://mybikes.info/community.php',
+    },
+    {
+      'title': 'Events',
+      'icon': Icons.event,
+      'url': 'https://mybikes.info/events.php',
+    },
+    {
+      'title': 'Blog',
+      'icon': Icons.article,
+      'url': 'https://mybikes.info/blog.php',
+    },
+    {
+      'title': 'Support',
+      'icon': Icons.support,
+      'url': 'https://mybikes.info/support.php',
+    },
+    {'title': 'About', 'icon': Icons.info, 'action': 'showAbout'},
+  ];
 
   // Show About dialog
   void _showAboutDialog() {
@@ -74,13 +107,12 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _selectedIndex = index;
     });
-    if (index == 3) {
-      // About
+    final item = navItems[index];
+    if (item['action'] == 'showAbout') {
       _showAboutDialog();
-    } else if (navUrls.containsKey(index)) {
-      // Home, Profile, Shop
+    } else if (item['url'] != null) {
       webViewController?.loadUrl(
-        urlRequest: URLRequest(url: WebUri(navUrls[index]!)),
+        urlRequest: URLRequest(url: WebUri(item['url'])),
       );
     }
   }
@@ -131,7 +163,7 @@ class _MyHomePageState extends State<MyHomePage> {
               Expanded(
                 child: InAppWebView(
                   initialUrlRequest: URLRequest(
-                    url: WebUri(navUrls[0]!), // Initial URL (Home)
+                    url: WebUri(navItems[0]['url']), // Initial URL (Home)
                   ),
                   initialSettings: InAppWebViewSettings(
                     allowsBackForwardNavigationGestures: true,
@@ -168,21 +200,77 @@ class _MyHomePageState extends State<MyHomePage> {
             ],
           ),
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart),
-              label: 'Shop',
+        bottomNavigationBar: Container(
+          height: 70, // Adjust height as needed
+          color: Colors.white, // Background color
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children:
+                  navItems.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final item = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: GestureDetector(
+                        onTap: () => _onItemTapped(index),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                _selectedIndex == index
+                                    ? const Color.fromARGB(
+                                      255,
+                                      52,
+                                      221,
+                                      109,
+                                    ).withOpacity(0.2)
+                                    : null,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                item['icon'],
+                                color:
+                                    _selectedIndex == index
+                                        ? const Color.fromARGB(
+                                          255,
+                                          52,
+                                          221,
+                                          109,
+                                        )
+                                        : Colors.grey,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                item['title'],
+                                style: TextStyle(
+                                  color:
+                                      _selectedIndex == index
+                                          ? const Color.fromARGB(
+                                            255,
+                                            52,
+                                            221,
+                                            109,
+                                          )
+                                          : Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
             ),
-            BottomNavigationBarItem(icon: Icon(Icons.info), label: 'About'),
-          ],
-          currentIndex: _selectedIndex,
-          selectedItemColor: const Color.fromARGB(255, 52, 221, 109),
-          unselectedItemColor: Colors.grey,
-          onTap: _onItemTapped,
-          type: BottomNavigationBarType.fixed, // Ensure all items are visible
+          ),
         ),
       ),
     );
