@@ -31,15 +31,34 @@ class _MyAppState extends State<MyApp> {
           return Future.value(true); // Allow back exit if no history
         },
         child: Scaffold(
-          appBar: AppBar(
-            title: const Text('WebView Example'),
-            actions: [
-              if (isLoading)
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: CircularProgressIndicator(),
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(50), // Adjusted AppBar height
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color.fromARGB(255, 52, 221, 109),
+                    const Color.fromARGB(255, 31, 173, 74),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-            ],
+              ),
+              child: AppBar(
+                backgroundColor:
+                    Colors
+                        .transparent, // Make the AppBar background transparent
+                elevation: 0, // Remove shadow
+                title: const Text('My Bike'),
+                actions: [
+                  if (isLoading)
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                ],
+              ),
+            ),
           ),
           body: SafeArea(
             child: Column(
@@ -47,9 +66,7 @@ class _MyAppState extends State<MyApp> {
                 Expanded(
                   child: InAppWebView(
                     initialUrlRequest: URLRequest(
-                      url: WebUri(
-                        "https://mybikes.info/login.php",
-                      ), // Updated this line
+                      url: WebUri("https://mybikes.info/login.php"),
                     ),
                     initialSettings: InAppWebViewSettings(
                       allowsBackForwardNavigationGestures: true,
