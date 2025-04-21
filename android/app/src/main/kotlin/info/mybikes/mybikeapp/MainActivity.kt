@@ -1,4 +1,4 @@
-package com.example.web_view_application
+package info.mybikes.mybikeapp
 
 import io.flutter.embedding.android.FlutterActivity
 
