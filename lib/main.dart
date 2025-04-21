@@ -61,7 +61,7 @@ class _MyHomePageState extends State<MyHomePage> {
     {
       'title': 'Shop',
       'icon': Icons.shopping_cart,
-      'url': 'https://mybikes.info/shop.php',
+      'url': 'https://mybikes.info/shop_finder.php',
     },
     {
       'title': 'Community',
