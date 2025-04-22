@@ -27,10 +27,8 @@ class _MyAppState extends State<MyApp> {
           if (controler != null) {
             if (await controler.canGoBack()) {
               controler.goBack();
-
             }
           }
-          //hdhsjsdgajgd
         },
         child: Scaffold(
           body: SafeArea(
