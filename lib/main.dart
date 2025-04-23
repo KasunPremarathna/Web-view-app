@@ -46,6 +46,8 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   InAppWebViewController? webViewController;
   bool isLoading = true;
+  bool errorOccurred = false; // Track if an error occurred
+  String? lastUrl; // Store the last URL attempted
   int _bottomNavIndex = 0; // Track the selected bottom nav bar item
   int _drawerIndex =
       -1; // Track the selected drawer item (-1 means none selected)
@@ -133,6 +135,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _bottomNavIndex = 0; // Reset to Home
       _drawerIndex = -1; // Reset drawer selection
+      errorOccurred = false; // Reset error state
     });
   }
 
@@ -141,9 +144,11 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _bottomNavIndex = index;
       _drawerIndex = -1; // Reset drawer selection
+      errorOccurred = false; // Reset error state
     });
     final item = bottomNavItems[index];
     if (item['url'] != null) {
+      lastUrl = item['url']; // Store the URL
       webViewController?.loadUrl(
         urlRequest: URLRequest(url: WebUri(item['url'])),
       );
@@ -155,6 +160,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _drawerIndex = index;
       _bottomNavIndex = -1; // Reset bottom nav selection
+      errorOccurred = false; // Reset error state
     });
     final item = drawerNavItems[index];
     if (item['action'] == 'showAbout') {
@@ -162,12 +168,24 @@ class _MyHomePageState extends State<MyHomePage> {
     } else if (item['action'] == 'logout') {
       _handleLogout();
     } else if (item['url'] != null) {
+      lastUrl = item['url']; // Store the URL
       webViewController?.loadUrl(
         urlRequest: URLRequest(url: WebUri(item['url'])),
       );
     }
     // Close the drawer
     Navigator.pop(context);
+  }
+
+  // Retry loading the last URL
+  void _retryLoading() {
+    if (lastUrl != null) {
+      setState(() {
+        errorOccurred = false;
+        isLoading = true;
+      });
+      webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(lastUrl!)));
+    }
   }
 
   @override
@@ -177,6 +195,9 @@ class _MyHomePageState extends State<MyHomePage> {
         final controller = webViewController;
         if (controller != null && await controller.canGoBack()) {
           controller.goBack();
+          setState(() {
+            errorOccurred = false; // Reset error state on back navigation
+          });
           return Future.value(false); // Prevent default back action
         }
         return Future.value(true); // Allow back exit if no history
@@ -188,8 +209,8 @@ class _MyHomePageState extends State<MyHomePage> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  const Color.fromARGB(255, 52, 221, 109),
-                  const Color.fromARGB(255, 77, 182, 109),
+                  Color.fromARGB(255, 0, 219, 145),
+                  Color.fromARGB(255, 22, 84, 105),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -228,8 +249,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      const Color.fromARGB(255, 52, 221, 109),
-                      const Color.fromARGB(255, 77, 182, 109),
+                      Color.fromARGB(255, 0, 219, 145),
+                      Color.fromARGB(255, 22, 84, 105),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -250,7 +271,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   selectedTileColor: Colors.grey[200],
                   onTap: () => _onDrawerItemTapped(index),
                 );
-              }).toList(),
+              }),
             ],
           ),
         ),
@@ -258,47 +279,126 @@ class _MyHomePageState extends State<MyHomePage> {
           child: Column(
             children: [
               Expanded(
-                child: InAppWebView(
-                  initialUrlRequest: URLRequest(
-                    url: WebUri(bottomNavItems[0]['url']), // Initial URL (Home)
-                  ),
-                  initialSettings: InAppWebViewSettings(
-                    allowsBackForwardNavigationGestures: true,
-                    javaScriptEnabled: true, // Enable JS support
-                    useHybridComposition: true, // Optimize for Android
-                    cacheEnabled:
-                        true, // Enable caching for persistent sessions
-                    databaseEnabled: true, // Enable web database
-                    domStorageEnabled: true, // Enable DOM storage
-                    clearCache: false, // Do not clear cache on startup
-                  ),
-                  onWebViewCreated: (controller) {
-                    webViewController = controller;
-                  },
-                  onLoadStart: (controller, url) {
-                    setState(() {
-                      isLoading =
-                          true; // Show loading indicator when a page starts loading
-                    });
-                  },
-                  onLoadStop: (controller, url) async {
-                    setState(() {
-                      isLoading =
-                          false; // Hide loading indicator when the page finishes loading
-                    });
-                  },
-                  onProgressChanged: (controller, progress) {
-                    if (progress == 100) {
-                      setState(() {
-                        isLoading = false;
-                      });
-                    } else {
-                      setState(() {
-                        isLoading = true;
-                      });
-                    }
-                  },
-                ),
+                child:
+                    errorOccurred
+                        ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                size: 60,
+                                color: Colors.red,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'Page Not Available',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Unable to load the page. Please check your connection or try again.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 16),
+                              ),
+                              SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _retryLoading,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color.fromARGB(
+                                    255,
+                                    0,
+                                    219,
+                                    145,
+                                  ),
+                                ),
+                                child: Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        )
+                        : InAppWebView(
+                          initialUrlRequest: URLRequest(
+                            url: WebUri(
+                              bottomNavItems[0]['url'],
+                            ), // Initial URL (Home)
+                          ),
+                          initialSettings: InAppWebViewSettings(
+                            allowsBackForwardNavigationGestures: true,
+                            javaScriptEnabled: true, // Enable JS support
+                            useHybridComposition: true, // Optimize for Android
+                            cacheEnabled:
+                                true, // Enable caching for persistent sessions
+                            databaseEnabled: true, // Enable web database
+                            domStorageEnabled: true, // Enable DOM storage
+                            clearCache: false, // Do not clear cache on startup
+                          ),
+                          onWebViewCreated: (controller) {
+                            webViewController = controller;
+                          },
+                          onLoadStart: (controller, url) {
+                            setState(() {
+                              isLoading =
+                                  true; // Show loading indicator when a page starts loading
+                              errorOccurred = false; // Reset error state
+                              lastUrl = url.toString(); // Store the current URL
+                            });
+                          },
+                          onLoadStop: (controller, url) async {
+                            setState(() {
+                              isLoading =
+                                  false; // Hide loading indicator when the page finishes loading
+                            });
+                          },
+                          onLoadError: (controller, url, code, message) {
+                            setState(() {
+                              isLoading = false;
+                              errorOccurred = true; // Show error screen
+                            });
+                          },
+                          onProgressChanged: (controller, progress) {
+                            if (progress == 100) {
+                              setState(() {
+                                isLoading = false;
+                              });
+                            } else {
+                              setState(() {
+                                isLoading = true;
+                              });
+                            }
+                          },
+                          shouldOverrideUrlLoading: (
+                            controller,
+                            navigationAction,
+                          ) async {
+                            final url = navigationAction.request.url.toString();
+                            // Check if the URL is a WhatsApp link
+                            if (url.startsWith('https://wa.me/') ||
+                                url.startsWith('whatsapp://')) {
+                              try {
+                                await launchUrl(
+                                  Uri.parse(url),
+                                  mode: LaunchMode.externalApplication,
+                                );
+                                return NavigationActionPolicy
+                                    .CANCEL; // Prevent InAppWebView from loading the URL
+                              } catch (e) {
+                                // Optionally show an error message if WhatsApp cannot be opened
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Could not open WhatsApp'),
+                                  ),
+                                );
+                                return NavigationActionPolicy.CANCEL;
+                              }
+                            }
+                            return NavigationActionPolicy
+                                .ALLOW; // Allow other URLs to load in the WebView
+                          },
+                        ),
               ),
             ],
           ),
