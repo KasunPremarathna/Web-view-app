@@ -95,8 +95,8 @@ class _MyHomePageState extends State<MyHomePage> {
           title: const Text('About My Bike'),
           content: const Text(
             'My Bike is a web-based application for bike enthusiasts. '
-            'Version 1.0.0\n'
-            'Developed by My Bike Team.',
+            'Version 1.0.1\n'
+            'Developed by Kasun Premarathna.',
           ),
           actions: [
             TextButton(
