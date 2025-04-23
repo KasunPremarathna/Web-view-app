@@ -4,7 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 void main() async {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
 
   // Enable verbose logging for debugging (remove in production)
   OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
@@ -13,6 +13,8 @@ void main() async {
   // Use this method to prompt for push notifications.
   // We recommend removing this method after testing and instead use In-App Messages to prompt for notification permission.
   OneSignal.Notifications.requestPermission(false);
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -44,14 +46,16 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   InAppWebViewController? webViewController;
   bool isLoading = true;
-  int _selectedIndex = 0; // Track the selected nav bar item
+  int _bottomNavIndex = 0; // Track the selected bottom nav bar item
+  int _drawerIndex =
+      -1; // Track the selected drawer item (-1 means none selected)
 
-  // Navigation items with URLs and actions
-  final List<Map<String, dynamic>> navItems = [
+  // Bottom navigation items (3 items)
+  final List<Map<String, dynamic>> bottomNavItems = [
     {
       'title': 'Home',
       'icon': Icons.home,
-      'url': 'https://mybikes.info/login.php',
+      'url': 'https://mybikes.info/dashboard.php',
     },
     {
       'title': 'Profile',
@@ -63,6 +67,10 @@ class _MyHomePageState extends State<MyHomePage> {
       'icon': Icons.shopping_cart,
       'url': 'https://mybikes.info/shop_finder.php',
     },
+  ];
+
+  // Drawer navigation items (5 items + Logout)
+  final List<Map<String, dynamic>> drawerNavItems = [
     {
       'title': 'Community',
       'icon': Icons.group,
@@ -84,6 +92,7 @@ class _MyHomePageState extends State<MyHomePage> {
       'url': 'https://mybikes.info/support.php',
     },
     {'title': 'About', 'icon': Icons.info, 'action': 'showAbout'},
+    {'title': 'Logout', 'icon': Icons.logout, 'action': 'logout'},
   ];
 
   // Show About dialog
@@ -92,9 +101,9 @@ class _MyHomePageState extends State<MyHomePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('About My Bike'),
+          title: const Text('About My Bike App'),
           content: const Text(
-            'My Bike is a web-based application for bike enthusiasts. '
+            'My Bike is a web-based application for bike Maintenance. '
             'Version 1.0.1\n'
             'Developed by Kasun Premarathna.',
           ),
@@ -111,19 +120,54 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  // Handle navigation bar item tap
-  void _onItemTapped(int index) {
+  // Handle logout
+  Future<void> _handleLogout() async {
+    // Clear all web view data to end the session
+    await webViewController?.clearCache();
+    await WebStorageManager.instance().android.deleteAllData();
+    await CookieManager.instance().deleteAllCookies();
+    // Redirect to login page
+    await webViewController?.loadUrl(
+      urlRequest: URLRequest(url: WebUri('https://mybikes.info')),
+    );
     setState(() {
-      _selectedIndex = index;
+      _bottomNavIndex = 0; // Reset to Home
+      _drawerIndex = -1; // Reset drawer selection
     });
-    final item = navItems[index];
+  }
+
+  // Handle bottom navigation bar item tap
+  void _onBottomNavTapped(int index) {
+    setState(() {
+      _bottomNavIndex = index;
+      _drawerIndex = -1; // Reset drawer selection
+    });
+    final item = bottomNavItems[index];
+    if (item['url'] != null) {
+      webViewController?.loadUrl(
+        urlRequest: URLRequest(url: WebUri(item['url'])),
+      );
+    }
+  }
+
+  // Handle drawer item tap
+  void _onDrawerItemTapped(int index) {
+    setState(() {
+      _drawerIndex = index;
+      _bottomNavIndex = -1; // Reset bottom nav selection
+    });
+    final item = drawerNavItems[index];
     if (item['action'] == 'showAbout') {
       _showAboutDialog();
+    } else if (item['action'] == 'logout') {
+      _handleLogout();
     } else if (item['url'] != null) {
       webViewController?.loadUrl(
         urlRequest: URLRequest(url: WebUri(item['url'])),
       );
     }
+    // Close the drawer
+    Navigator.pop(context);
   }
 
   @override
@@ -156,6 +200,16 @@ class _MyHomePageState extends State<MyHomePage> {
                   Colors.transparent, // Make the AppBar background transparent
               elevation: 0, // Remove shadow
               title: const Text('My Bike'),
+              leading: Builder(
+                builder: (BuildContext context) {
+                  return IconButton(
+                    icon: const Icon(Icons.menu),
+                    onPressed: () {
+                      Scaffold.of(context).openDrawer();
+                    },
+                  );
+                },
+              ),
               actions: [
                 if (isLoading)
                   Padding(
@@ -166,17 +220,57 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
         ),
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color.fromARGB(255, 52, 221, 109),
+                      const Color.fromARGB(255, 77, 182, 109),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Text(
+                  'Menu',
+                  style: TextStyle(color: Colors.white, fontSize: 24),
+                ),
+              ),
+              ...drawerNavItems.asMap().entries.map((entry) {
+                final index = entry.key;
+                final item = entry.value;
+                return ListTile(
+                  leading: Icon(item['icon']),
+                  title: Text(item['title']),
+                  selected: _drawerIndex == index,
+                  selectedTileColor: Colors.grey[200],
+                  onTap: () => _onDrawerItemTapped(index),
+                );
+              }).toList(),
+            ],
+          ),
+        ),
         body: SafeArea(
           child: Column(
             children: [
               Expanded(
                 child: InAppWebView(
                   initialUrlRequest: URLRequest(
-                    url: WebUri(navItems[0]['url']), // Initial URL (Home)
+                    url: WebUri(bottomNavItems[0]['url']), // Initial URL (Home)
                   ),
                   initialSettings: InAppWebViewSettings(
                     allowsBackForwardNavigationGestures: true,
                     javaScriptEnabled: true, // Enable JS support
+                    useHybridComposition: true, // Optimize for Android
+                    cacheEnabled:
+                        true, // Enable caching for persistent sessions
+                    databaseEnabled: true, // Enable web database
+                    domStorageEnabled: true, // Enable DOM storage
+                    clearCache: false, // Do not clear cache on startup
                   ),
                   onWebViewCreated: (controller) {
                     webViewController = controller;
@@ -209,77 +303,19 @@ class _MyHomePageState extends State<MyHomePage> {
             ],
           ),
         ),
-        bottomNavigationBar: Container(
-          height: 70, // Adjust height as needed
-          color: Colors.white, // Background color
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              children:
-                  navItems.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final item = entry.value;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: GestureDetector(
-                        onTap: () => _onItemTapped(index),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color:
-                                _selectedIndex == index
-                                    ? const Color.fromARGB(
-                                      255,
-                                      52,
-                                      221,
-                                      109,
-                                    ).withOpacity(0.2)
-                                    : null,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                item['icon'],
-                                color:
-                                    _selectedIndex == index
-                                        ? const Color.fromARGB(
-                                          255,
-                                          52,
-                                          221,
-                                          109,
-                                        )
-                                        : Colors.grey,
-                                size: 24,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                item['title'],
-                                style: TextStyle(
-                                  color:
-                                      _selectedIndex == index
-                                          ? const Color.fromARGB(
-                                            255,
-                                            52,
-                                            221,
-                                            109,
-                                          )
-                                          : Colors.grey,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-            ),
-          ),
+        bottomNavigationBar: BottomNavigationBar(
+          items:
+              bottomNavItems.map((item) {
+                return BottomNavigationBarItem(
+                  icon: Icon(item['icon']),
+                  label: item['title'],
+                );
+              }).toList(),
+          currentIndex: _bottomNavIndex >= 0 ? _bottomNavIndex : 0,
+          selectedItemColor: const Color.fromARGB(255, 52, 221, 109),
+          unselectedItemColor: Colors.grey,
+          onTap: _onBottomNavTapped,
+          type: BottomNavigationBarType.fixed, // Ensure all 3 items are visible
         ),
       ),
     );
