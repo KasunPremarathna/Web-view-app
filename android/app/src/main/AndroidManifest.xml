@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-package="info.mybikes.mybikeapp">
+package="info.exam.mate">
     <application
-        android:label="My Bike"
+        android:label="exam_mate"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
